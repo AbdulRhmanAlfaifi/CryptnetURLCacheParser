@@ -4,9 +4,11 @@
 # 12 bytes unknown
 # 4 bytes (uint32) urlSize
 # 8 bytes (uint64) FILETIME
-# 76 bytes unkown
+# 64 bytes unknown
+# 8 bytes (uint64) FILETIME
+# 4 bytes unknown
 # 4 bytes (uint32) etag size
-# 8 bytes unkown
+# 8 bytes unknown
 # 4 bytes (uint32) file size
 # urlSize utf-16-le URL string
 # etag utf-16-le hash string (Sometimes)
@@ -63,11 +65,11 @@ class CertutilCacheParser:
     def Parse(self, useContent=True):
         parsedData = {}
         cacheFile = open(self.filePath, "rb")
-        header = struct.unpack("<12xIQQ68xI8xI", cacheFile.read(116))
+        header = struct.unpack("<12xIQ64xQ4xI8xI", cacheFile.read(116))
         urlSize = header[0]
         last_download_time = self.FILETIMEToISO(header[1])
         last_modification_time_header = self.FILETIMEToISO(header[2])
-        etag = header[3]
+        etagsize = header[3]
         fileSize = header[4]
         # Read url string with the urlSize-1 (ignore null byte).
         try:
@@ -80,7 +82,7 @@ class CertutilCacheParser:
         # Read hash string with the etag-1 (ignore null byte) and remove double quotation.
         try:
             hash = (
-                b"".join(struct.unpack(f"{etag}c", cacheFile.read(etag)))
+                b"".join(struct.unpack(f"{etagsize}c", cacheFile.read(etagsize)))
                 .decode("utf-16-le")
                 .replace('"', "")[0:-1]
             )
@@ -168,11 +170,11 @@ if __name__ == "__main__":
             )
         if args.useContent and not args.noHeaders:
             results.writerow(
-                ["LastDownloadTime", "URL", "FileSize", "ETag", "FullPath", "MD5"]
+                ["LastDownloadTime", "LastModificationTimeHeader", "URL", "FileSize", "ETag", "FullPath", "MD5"]
             )
         elif not args.noHeaders:
             results.writerow(
-                ["LastDownloadTime", "URL", "FileSize", "ETag", "FullPath"]
+                ["LastDownloadTime", "LastModificationTimeHeader", "URL", "FileSize", "ETag", "FullPath"]
             )
     elif args.outputFormat == "json":
         results = []
